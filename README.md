@@ -1,6 +1,7 @@
 # ising
 
-A sequencer for Monome norns based on a [2D Ising model](https://en.wikipedia.org/wiki/Ising_model).
+A sequencer for Monome norns based on a simple [2D Ising model](https://en.wikipedia.org/wiki/Ising_model).
+
 Ising is a modified version of [zellen](https://github.com/sarweiler/zellen), a sequencer based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life).
 
 ## Usage
