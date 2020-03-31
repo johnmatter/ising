@@ -14,6 +14,8 @@ Ising is a modified version of [zellen](https://github.com/sarweiler/zellen), a 
 * ENC2: set play mode (see below)
 * ENC3: set play direction (see below)
 * hold KEY3 + ENC3: time jog
+* hold KEY1 + ENC2: change temperature
+* hold KEY1 + ENC3: change coupling constant
 
 ### Play Modes
 
