@@ -1,9 +1,8 @@
--- zellen v1.3.3
+-- ising v1.0.0
 --
 -- sequencer based on
--- conway's game of life
--- https://llllllll.co/t/21107
---
+-- a simple 2D Ising model;
+-- based on zellen
 --
 -- grid: enter cell pattern
 --
@@ -103,7 +102,6 @@ local function notes_off()
   state.active_notes = {}
 end
 
-
 -- game logic
 local function x_coord_wrap(x)
   x_mod = (x == 0 or x == config.GRID.SIZE.X) and config.GRID.SIZE.X or math.max(1, x % config.GRID.SIZE.X)
@@ -115,61 +113,117 @@ local function y_coord_wrap(y)
   return (y == 0 or y == config.GRID.SIZE.Y) and config.GRID.SIZE.Y or math.max(1, y % config.GRID.SIZE.Y)
 end
 
-local function is_active(x, y)
-  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] > config.GRID.LEVEL.ALIVE_THRESHOLD
+local function is_spin_up(x, y)
+  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] == config.GRID.LEVEL.SPIN_UP
 end
 
-local function is_dying(x, y)
-  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] == config.GRID.LEVEL.DYING
+local function is_spin_down(x, y)
+  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] == config.GRID.LEVEL.SPIN_DOWN
 end
 
-local function was_born(x, y)
-  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] == config.GRID.LEVEL.BORN
+local function spin_flipped(x, y)
+  local spin_diff = state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] - state.board.the_past.value[x_coord_wrap(x)][y_coord_wrap(y)]
+  return (spin_diff ~= 0)
 end
 
-local function was_reborn(x, y)
-  return state.board.current[x_coord_wrap(x)][y_coord_wrap(y)] == config.GRID.LEVEL.REBORN
+
+local function get_spin(b, x, y)
+  -- Spin for the energy calculation should be plus or minus one.
+  -- Spin down currently has a brightness of 0.
+  -- Let N be config's spin up brightness. Then,
+  -- spin down : (0 - N/2)/(N/2) = (-6)/6 = -1
+  -- spin up   : (N - N/2)/(N/2) = (+6)/6 = +1
+  local spin = b[x_coord_wrap(x)][y_coord_wrap(y)] - (config.GRID.LEVEL.SPIN_UP/2)
+  spin = spin / (config.GRID.LEVEL.SPIN_UP/2)
+  return spin
 end
 
-local function number_of_neighbors(x, y)
-  local num_neighbors = 0
-  if (params:get("wrap_mode") == 1) then
-    num_neighbors = num_neighbors + (is_active(x + 1, y) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x - 1, y) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x, y + 1) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x, y - 1) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x + 1, y + 1) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x + 1, y - 1) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x - 1, y + 1) and 1 or 0)
-    num_neighbors = num_neighbors + (is_active(x - 1, y - 1) and 1 or 0)
-  else
-    if (x < config.GRID.SIZE.X) then
-      num_neighbors = num_neighbors + (is_active(x + 1, y) and 1 or 0)
+local function get_J(x1,y1,x2,y2)
+  -- This is currently just a constant.
+  -- TODO: implement a distance-dependent coupling
+  return params:get("J")
+end
+
+local function get_energy(b, x, y)
+  local energy = 0
+  -- find neighbors' positions based on boundary conditions
+  if (params:get("wrap_mode") == 1) then -- periodic BCs
+    if (x == 1) then
+      left = config.GRID.SIZE.X
+    else
+      down = x-1
     end
-    if (x > 1) then
-      num_neighbors = num_neighbors + (is_active(x - 1, y) and 1 or 0)
+    if (x == config.GRID.SIZE.X) then
+      right = 1
+    else
+      right = x+1
     end
-    if (y < config.GRID.SIZE.Y) then
-      num_neighbors = num_neighbors + (is_active(x, y + 1) and 1 or 0)
+    if (y == 1) then
+      down = config.GRID.SIZE.Y
+    else
+      down = y-1
     end
-    if (y > 1) then
-      num_neighbors = num_neighbors + (is_active(x, y - 1) and 1 or 0)
+    if (y == config.GRID.SIZE.Y) then
+      up = 1
+    else
+      up = y+1
     end
-    if (x < config.GRID.SIZE.X and y < config.GRID.SIZE.Y) then
-      num_neighbors = num_neighbors + (is_active(x + 1, y + 1) and 1 or 0)
+  else -- closed BCs
+    -- an index of -1 indicates we're at the boundary
+    -- These nonexistent neighbors will be ignored in the energy calculation
+    if (x == 1) then
+      left = -1
+    else
+      down = x-1
     end
-    if (x < config.GRID.SIZE.X and y > 1) then
-      num_neighbors = num_neighbors + (is_active(x + 1, y - 1) and 1 or 0)
+    if (x == config.GRID.SIZE.X) then
+      right = -1
+    else
+      right = x+1
     end
-    if (x > 1 and y < config.GRID.SIZE.Y) then
-      num_neighbors = num_neighbors + (is_active(x - 1, y + 1) and 1 or 0)
+    if (y == 1) then
+      down = -1
+    else
+      down = y-1
     end
-    if (x > 1 and y > 1) then
-      num_neighbors = num_neighbors + (is_active(x - 1, y - 1) and 1 or 0)
+    if (y == config.GRID.SIZE.Y) then
+      up = -1
+    else
+      up = y+1
     end
   end
+  -- calculate energy
+  if (left>0) then
+    energy = energy - get_J(x,y,left,y)  * get_spin(b,x,y) * get_spin(b,left,y)
+  end
+  if (right>0) then
+    energy = energy - get_J(x,y,right,y) * get_spin(b,x,y) * get_spin(b,right,y)
+  end
+  if (up>0) then
+    energy = energy - get_J(x,y,x,up)    * get_spin(b,x,y) * get_spin(b,x,up)
+  end
+  if (down>0) then
+    energy = energy - get_J(x,y,x,down)  * get_spin(b,x,y) * get_spin(b,x,down)
+  end
+  return energy
+end
 
-  return num_neighbors
+local function flip_test(b,x,y)
+  flipped = false
+  -- dE is the change in energy we would see from a flip
+  dE = -2*get_energy(b,x,y)
+  -- flip because it yields lower energy?
+  if (dE<0) then
+    flipped = true
+  end
+  -- flip because thermal excitation?
+  if (params:get("temperature") == 0) then -- edge case T=0 never flips
+    flipped = false
+  end
+  if (math.random() < math.exp(-dE/params:get("temperature"))) then
+    flipped = true
+  end
+  return flipped
 end
 
 local function collect_playable_cells()
@@ -177,19 +231,19 @@ local function collect_playable_cells()
   local mode = params:get("play_mode")
   for x=1,config.GRID.SIZE.X do
     for y=1,config.GRID.SIZE.Y do
-      if (was_born(x, y) and mode == 1) then
+      if (is_spin_up(x, y) and mode == 1) then
         table.insert(state.playable_cells, {
           ["x"] = x,
           ["y"] = y
         })
       end
-      if ((was_born(x, y) or was_reborn(x, y)) and mode == 2) then
+      if (is_spin_down(x, y) and mode == 2) then
         table.insert(state.playable_cells, {
           ["x"] = x,
           ["y"] = y
         })
       end
-      if (is_dying(x, y) and mode == 3) then
+      if (spin_flipped(x, y) and mode == 3) then
         table.insert(state.playable_cells, {
           ["x"] = x,
           ["y"] = y
@@ -197,7 +251,7 @@ local function collect_playable_cells()
       end
     end
   end
-  
+
   local play_direction = params:get("play_direction")
   if(play_direction == 2 or play_direction == 5) then
     state.playable_cells = helpers.table.reverse(state.playable_cells)
@@ -220,25 +274,13 @@ local function generation_step()
   local board_c = helpers.clone_board(state.board.current)
   for x=1,config.GRID.SIZE.X do
     for y=1,config.GRID.SIZE.Y do
-      local num_neighbors = number_of_neighbors(x, y)
-      local cell_active = is_active(x, y)
-      if(is_dying(x, y)) then
-        board_c[x][y] = config.GRID.LEVEL.DEAD
-      end
-      if (num_neighbors < 2 and cell_active) then
-        board_c[x][y] = config.GRID.LEVEL.DYING
-      end
-      if (num_neighbors > 3 and cell_active) then
-        board_c[x][y] = config.GRID.LEVEL.DYING
-      end
-      if (num_neighbors > 1 and num_neighbors < 4 and cell_active) then
-        board_c[x][y] = config.GRID.LEVEL.ALIVE
-      end
-      if (num_neighbors == 3 and cell_active) then
-        board_c[x][y] = config.GRID.LEVEL.REBORN
-      end
-      if (num_neighbors == 3 and not cell_active) then
-        board_c[x][y] = config.GRID.LEVEL.BORN
+      if (flip_test(board_c, x, y)) then
+        if (is_spin_up(x,y)) then
+          board_c[x][y] = config.GRID.LEVEL.SPIN_DOWN
+        end
+        if (is_spin_down(x,y)) then
+          board_c[x][y] = config.GRID.LEVEL.SPIN_UP
+        end
       end
     end
   end
@@ -263,7 +305,7 @@ local function reset_sequence()
   if (params:get("euclid_reset") == 1) then
     state.beat_step = 1
   end
-  
+
   if(seq_mode == 3 or (seq_mode == 2 and params:get("loop_semi_auto_seq") == 1)) then
     if(seq_mode == 3) then
       init_position()
@@ -284,17 +326,17 @@ local function reset_sequence()
 end
 
 local function play_seq_step()
-  
+
   local play_direction = params:get("play_direction")
   local seq_mode = params:get("seq_mode")
   notes_off()
 
   cr:execute_action(4)
-  
+
   state.show_playing_indicator = not state.show_playing_indicator
-  
+
   local beat_seq_lengths = #state.beats
-  
+
   if (state.beats[(state.beat_step % beat_seq_lengths) + 1] or seq_mode == 1) then
     if (state.play_pos <= #state.playable_cells) then
       state.seq.position = state.playable_cells[state.play_pos]
@@ -303,7 +345,7 @@ local function play_seq_step()
 
       -- crow support note
       local support_note_value = state.seq.position.x / state.seq.position.y
-      if(support_mode == 1) then 
+      if(support_mode == 1) then
         support_note_value = state.seq.position.x / state.seq.position.y
       elseif support_mode == 2 then
         support_note_value = math.max(state.seq.position.x % state.seq.position.y, 1)
@@ -342,8 +384,8 @@ end
 local function clear_board()
   for x=1,config.GRID.SIZE.X do
     for y=1,config.GRID.SIZE.Y do
-      state.board.current[x][y] = config.GRID.LEVEL.DEAD
-    end 
+      state.board.current[x][y] = config.GRID.LEVEL.SPIN_DOWN
+    end
   end
   notes_off()
   init_position()
@@ -356,7 +398,7 @@ end
 
 local function set_play_mode(play_mode)
   if(play_mode == 3) then
-    state.note_offset = params:get("ghost_offset")
+    state.note_offset = params:get("flip_offset")
   else
     state.note_offset = 0
   end
@@ -367,7 +409,7 @@ local function set_play_direction()
   collect_playable_cells()
 end
 
-local function set_ghost_offset()
+local function set_flip_offset()
   set_play_mode(params:get("play_mode"))
 end
 
@@ -445,45 +487,50 @@ function init()
   end
   config.MUSIC.NOTE_NAMES = helpers.table.map(function(note) return note.name end, config.MUSIC.NOTES)
   config.MUSIC.SCALE_NAMES = helpers.table.map(function(scale) return scale.name end, music.SCALES)
-  
+
   -- params
-  params:add_option("seq_mode", "seq mode", config.SEQ.MODES, 2)
+  params:add_option("seq_mode", "seq mode", config.SEQ.MODES, 3)
   params:add_option("loop_semi_auto_seq", "loop seq in semi-auto mode", {"Y", "N"}, 1)
-  
+
   params:add_option("scale", "scale", config.MUSIC.SCALE_NAMES, 1)
   params:set_action("scale", set_scale)
-  
+
   params:add_option("state.root_note", "root note", config.MUSIC.NOTE_NAMES, 36)
   params:set_action("state.root_note", set_root_note)
-  
-  params:add_number("ghost_offset", "ghost offset", -24, 24, 0)
-  params:set_action("ghost_offset", set_ghost_offset)
-  
-  params:add_option("play_mode", "play mode", config.SEQ.PLAY_MODES, 1)
+
+  params:add_number("flip_offset", "flip offset", -24, 24, 0)
+  params:set_action("flip_offset", set_flip_offset)
+
+  params:add_option("play_mode", "play mode", config.SEQ.PLAY_MODES, 3)
   params:set_action("play_mode", set_play_mode)
-  
+
   params:add_option("play_direction", "play direction", config.SEQ.PLAY_DIRECTIONS, 1)
   params:set_action("play_direction", set_play_direction)
 
   params:add_option("wrap_mode", "wrap board at edges", {"Y", "N"}, 1)
-  
+
   params:add_separator()
-  
+
+  params:add_control("temperature", "temperature", controlspec.new(0.0, 100.0, "lin", 0.1, 5.0, ""))
+  params:add_control("J", "interaction strength", controlspec.new(-20.0, 20.0, "lin", 0.1, 3.0, ""))
+
+  params:add_separator()
+
   params:add_number("euclid_seq_len", "euclid seq length", 1, 100, 1)
   params:set_action("euclid_seq_len", set_euclid_seq_len)
-  
+
   params:add_number("euclid_seq_beats", "euclid seq beats", 1, 100, 1)
   params:set_action("euclid_seq_beats", set_euclid_seq_beats)
-  
+
   params:add_option("euclid_reset", "reset seq at start of gen", { "Y", "N" }, 2)
-  
+
   params:add_separator()
   params:add_option("synth_internal", "internal sound (polyperc)", {"on", "off"}, 1)
   params:add_control("amp", "internal amp", controlspec.new(0.1, 1.0, "lin", 0.01, 0.8, ""))
 
   params:add_control("release", "internal release", controlspec.new(0.1, 5.0, "lin", 0.01, 0.5, "s"))
   params:set_action("release", set_release)
-  
+
   params:add_control("cutoff", "internal cutoff", controlspec.new(50, 5000, "exp", 0, 1000, "hz"))
   params:set_action("cutoff", set_cutoff)
 
@@ -501,33 +548,33 @@ function init()
   params:add_option("synth_midi", "midi output", {"on", "off"}, 1)
   params:add_control("midi_note_velocity", "midi note velocity", controlspec.new(1, 127, "lin", 1, 100, ""))
   params:add_control("midi_velocity_var", "midi velocity variance", controlspec.new(1, 100, "lin", 1, 20, ""))
-  
+
   params:add_number("midi_channel", "midi channel", 1, 16, 1)
-  
+
   params:add_number("midi_out_device_number", "midi out device number", 1, 4, 1)
   params:set_action("midi_out_device_number", set_midi_out_device_number)
-  
+
   params:add_number("midi_in_device_number", "midi in device number", 1, 4, 1)
   params:set_action("midi_in_device_number", set_midi_in_device_number)
 
   params:add_separator()
   clk:add_clock_params()
-  
+
   state.scale_name = config.MUSIC.SCALE_NAMES[13]
   state.scale= music.generate_scale_of_length(state.root_note, state.scale_name, config.MUSIC.SCALE_LENGTH)
-  
+
   for x=1,config.GRID.SIZE.X do
-  state.board.current[x] = {}
+    state.board.current[x] = {}
     for y=1,config.GRID.SIZE.Y do
-      state.board.current[x][y] = config.GRID.LEVEL.DEAD
+      state.board.current[x][y] = config.GRID.LEVEL.SPIN_DOWN
     end
   end
   state.board.the_past = list.construct(helpers.clone_board(state.board.current)) -- initial construction of the past with a single 'dead' board
   helpers.load_params()
-  
+
   init_position()
   helpers.init_engine(engine)
-  
+
   clk.on_step = play_seq_step
 
   -- crow init
@@ -552,23 +599,23 @@ function redraw()
   screen.level(7)
   screen.move(0, 16)
   screen.text("bpm")
-  
+
   screen.move(0, 28)
   screen.level(15)
   screen.text(config.SEQ.PLAY_MODES[params:get("play_mode")])
   screen.level(7)
   screen.move(0, 36)
   screen.text("play mode")
-  
+
   screen.move(0, 48)
   screen.level(15)
   screen.text(config.SEQ.PLAY_DIRECTIONS[params:get("play_direction")])
   screen.level(7)
   screen.move(0, 56)
   screen.text("play direction")
-  
+
   helpers.update_playing_indicator(state.show_playing_indicator)
-  
+
   screen.update()
 end
 
@@ -666,10 +713,10 @@ end
 -- GRID input handling
 g.key = function(x, y, z)
   if (z == 1) then
-    if (is_active(x, y)) then
-      state.board.current[x][y] = config.GRID.LEVEL.DEAD
+    if (is_spin_up(x, y)) then
+      state.board.current[x][y] = config.GRID.LEVEL.SPIN_DOWN
     else
-      state.board.current[x][y] = config.GRID.LEVEL.ALIVE
+      state.board.current[x][y] = config.GRID.LEVEL.SPIN_UP
     end
   end
   grid_redraw()

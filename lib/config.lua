@@ -6,12 +6,8 @@ local config = {
       Y = 8 -- default, will be replaced with g.rows
     },
     LEVEL = {
-      ALIVE = 8,
-      BORN = 12,
-      REBORN = 13,
-      DYING = 2,
-      DEAD = 0,
-      ALIVE_THRESHOLD = 7,
+      SPIN_DOWN = 0,
+      SPIN_UP = 6, -- this should be an even number for get_spin() to work
       ACTIVE = 15
     }
   },
@@ -36,9 +32,9 @@ local config = {
       "drunken down"
     },
     PLAY_MODES = {
-      "born",
-      "reborn",
-      "ghost"
+      "spin up",
+      "spin down",
+      "spin flip"
     },
   },
   CROW = {

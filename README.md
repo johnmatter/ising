@@ -1,6 +1,7 @@
-# zellen
+# ising
 
-A sequencer for Monome norns based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life).
+A sequencer for Monome norns based on a [2D Ising model](https://en.wikipedia.org/wiki/Ising_model).
+Ising is a modified version of [zellen](https://github.com/sarweiler/zellen), a sequencer based on [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life).
 
 ## Usage
 
@@ -16,9 +17,9 @@ A sequencer for Monome norns based on [Conway's Game of Life](https://en.wikiped
 ### Play Modes
 
 Set the play mode with ENC2.
-* reborn (default): Play a note for every cell that was born or reborn (= has exactly three neighbors), regardless of the previous state of the cell
-* born: Play a note for every cell that was born (has exactly three neighbors and was not alive in the previous generation)
-* ghost: Play a note for every cell that is dying(has less than two or more than three neighbors). Ghost notes can have a different pitch! (See the "ghost offset" setting in the parameters screen.)
+* spin up (default): Play a note for every cell that has spin up
+* spin down: Play a note for every cell that has spin down
+* spin flip: Play a note for every cell that flipped its spin since the last generation
 
 ### Play Direction
 
@@ -37,9 +38,9 @@ Set the sequencing mode in the parameters screen. Default is semi-automatic.
 
 ## Crow support
 
-Zellen supports CV out via [Crow](https://monome.org/docs/crow/). Crow CV output can be configured in Norns's parameters menu.
+Ising supports CV out via [Crow](https://monome.org/docs/crow/). Crow CV output can be configured in Norns's parameters menu.
 
-Crow configuration for Zellen:
+Crow configuration for Ising:
 * Input 1: Clock
 * Input 2: CV offset
 * Output 1: CV
@@ -58,4 +59,4 @@ Alternative CV is, just like the main sequence, a CV derived from the current pl
 Set the MIDI channel (default: 1), MIDI velocity (default: 100), and MIDI clock in the parameters screen.
 
 ## More Parameters
-There is lots more to discover in the parameters screen, like root note, scale, and ghost offset.
+There is lots more to discover in the parameters screen, like root note, scale, and flip offset.

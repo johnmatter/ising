@@ -46,7 +46,7 @@ end
 
 helpers.load_params = function()
   -- TODO: load board state
-  params:read(_path.data .. "zellen/zellen.pset")
+  params:read(_path.data .. "ising/ising.pset")
   params:bang()
 end
 
