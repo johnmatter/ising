@@ -141,7 +141,7 @@ end
 local function get_J(x1,y1,x2,y2)
   -- This is currently just a constant.
   -- TODO: implement a distance-dependent coupling
-  return params:get("J")
+  return params:get("coupling")
 end
 
 local function get_energy(b, x, y)
@@ -413,6 +413,14 @@ local function set_flip_offset()
   set_play_mode(params:get("play_mode"))
 end
 
+local function set_temperature(new_temperature)
+  params:set("temperature", new_temperature)
+end
+
+local function set_coupling(new_coupling)
+  params:set("coupling", new_coupling)
+end
+
 local function set_scale(new_scale_name)
   state.scale= music.generate_scale_of_length(state.root_note, new_scale_name, config.MUSIC.SCALE_LENGTH)
 end
@@ -512,7 +520,7 @@ function init()
   params:add_separator()
 
   params:add_control("temperature", "temperature", controlspec.new(0.0, 100.0, "lin", 0.1, 5.0, ""))
-  params:add_control("J", "interaction strength", controlspec.new(-20.0, 20.0, "lin", 0.1, 3.0, ""))
+  params:add_control("coupling", "coupling", controlspec.new(-20.0, 20.0, "lin", 0.1, 3.0, ""))
 
   params:add_separator()
 
@@ -614,6 +622,20 @@ function redraw()
   screen.move(0, 56)
   screen.text("play direction")
 
+  screen.move(70, 28)
+  screen.level(15)
+  screen.text(params:get("temperature"))
+  screen.level(7)
+  screen.move(70, 36)
+  screen.text("temperature")
+
+  screen.move(70, 48)
+  screen.level(15)
+  screen.text(params:get("coupling"))
+  screen.level(7)
+  screen.move(70, 56)
+  screen.text("coupling")
+
   helpers.update_playing_indicator(state.show_playing_indicator)
 
   screen.update()
@@ -641,17 +663,28 @@ function enc(n, d)
     params:delta("bpm", d)
   end
   if (n == 2) then
-    params:delta("play_mode", d)
+    if (state.keys.key1_down == false) then
+        params:delta("play_mode", d)
+    else
+        set_temperature(params:get("temperature")+d/10.0)
+    end
   end
   if (n == 3) then
-    if (state.keys.key3_down == false) then
+    -- adjust play direction
+    if (state.keys.key1_down == false and state.keys.key3_down == false) then
       params:delta("play_direction", d)
-    else
+    end
+    -- time jog
+    if (state.keys.key1_down == false and state.keys.key3_down == true) then
       if (d == 1) then
         generation_step()
       else
         do_the_time_warp()
       end
+    end
+    -- adjust coupling
+    if (state.keys.key1_down == true and state.keys.key3_down == false) then
+      set_coupling(params:get("coupling")+d/10.0)
     end
   end
   redraw()
