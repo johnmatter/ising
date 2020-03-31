@@ -18,9 +18,9 @@ Ising is a modified version of [zellen](https://github.com/sarweiler/zellen), a 
 ### Play Modes
 
 Set the play mode with ENC2.
-* spin up (default): Play a note for every cell that has spin up
+* spin up: Play a note for every cell that has spin up
 * spin down: Play a note for every cell that has spin down
-* spin flip: Play a note for every cell that flipped its spin since the last generation
+* spin flip (default): Play a note for every cell that flipped its spin since the last generation
 
 ### Play Direction
 
@@ -34,8 +34,8 @@ Set the play direction with ENC3.
 ### Sequencing modes
 Set the sequencing mode in the parameters screen. Default is semi-automatic.
 * manual: Press KEY2 to play the next step in the sequence for a single generation.
-* semi-automatic: Plays the sequence for a single generation (and loops it if "loop seq in semi-auto mode" is enabled (default)).
-* automatic: Like semi-automatic, but automatically calculates the next generation and plays it.
+* semi-automatic: Plays the sequence for a single generation (and loops it if "loop seq in semi-auto mode" is enabled).
+* automatic: Like semi-automatic, but automatically calculates the next generation and plays it (default).
 
 ## Crow support
 
