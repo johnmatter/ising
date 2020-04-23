@@ -49,6 +49,13 @@ local config = {
     "midi",
     "both"
   },
+  JF = {
+    NOTE_MODES = {
+      "x/y",
+      "x%y",
+      "x+y"
+    }
+  }
 }
 
 return config
